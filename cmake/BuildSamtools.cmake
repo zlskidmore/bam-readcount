@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
+set(HTSLIB_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/vendor/samtools/htslib-1.9)
+
 set(SAMTOOLS_ROOT ${CMAKE_BINARY_DIR}/vendor/samtools)
 set(SAMTOOLS_LOG ${SAMTOOLS_ROOT}/build.log)
 set(SAMTOOLS_LIB ${SAMTOOLS_ROOT}/${CMAKE_FIND_LIBRARY_PREFIXES}bam${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -28,16 +30,15 @@ ExternalDependency_Add(
     samtools-lib
     BUILD_BYPRODUCTS ${SAMTOOLS_LIB} ${SAMTOOLS_BIN}
     ARGS
-        URL ${CMAKE_SOURCE_DIR}/vendor/samtools-0.1.19.tar.gz
+        URL ${CMAKE_SOURCE_DIR}/vendor/samtools-1.9.tar.bz2
         SOURCE_DIR ${SAMTOOLS_ROOT}
         BINARY_DIR ${SAMTOOLS_ROOT}
-        PATCH_COMMAND patch -p2 -t -N < ${CMAKE_SOURCE_DIR}/vendor/samtools0.1.19.patch
         CONFIGURE_COMMAND echo "Building samtools, build log at ${SAMTOOLS_LOG}"
-        BUILD_COMMAND make INCLUDES=-I${ZLIB_INCLUDE_DIRS} libbam.a > ${SAMTOOLS_LOG} 2>&1
+        BUILD_COMMAND make INCLUDES=-I${ZLIB_INCLUDE_DIRS} ${HTSLIB_INCLUDE_DIRS} libbam.a > ${SAMTOOLS_LOG} 2>&1
         INSTALL_COMMAND "true"
 )
 
-set(Samtools_INCLUDE_DIRS ${ZLIB_INCLUDE_DIRS};${SAMTOOLS_ROOT})
+set(Samtools_INCLUDE_DIRS ${ZLIB_INCLUDE_DIRS} ${HTSLIB_INCLUDE_DIRS};${SAMTOOLS_ROOT})
 set(Samtools_LIBRARIES ${SAMTOOLS_LIB} m ${ZLIB_LIBRARIES})
 
 if (NOT ZLIB_FOUND)

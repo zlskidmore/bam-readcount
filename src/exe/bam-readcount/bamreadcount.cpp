@@ -14,8 +14,8 @@
 #include <memory>
 #include <string.h>
 #include "sam.h"
-#include "faidx.h"
-#include "khash.h"
+#include "htslib-1.9/htslib/faidx.h"
+#include "htslib-1.9/htslib/khash.h"
 #include "sam_header.h"
 #include <stdio.h>
 #include <unistd.h>
@@ -59,7 +59,7 @@ typedef struct {
     int min_bq;       //minimum mapping qualitiy to use
     int beg,end;        //start and stop of region
     int len;            //length of currently loaded reference sequence
-    int max_cnt;       //maximum depth to set on the pileup buffer 
+    int max_cnt;       //maximum depth to set on the pileup buffer
     samfile_t *in;      //bam file
     int distribution;   //whether or not to display all mapping qualities
     bool per_lib;
@@ -91,7 +91,7 @@ std::set<std::string> find_library_names(bam_header_t const* header) {
     //samtools doesn't do a good job of exposing this so this is a little more implementation
     //dependent than I'd like and may be fragile.
     std::set<std::string> lib_names;
-    void *iter = header->dict;
+    void *iter = header->sdict;
     const char *key, *val;
     while( (iter = sam_header2key_val(iter, "RG", "ID", "LB", &key, &val)) ) {
         lib_names.insert(val);
@@ -281,7 +281,7 @@ static int pileup_func(uint32_t tid, uint32_t pos, int n, const bam_pileup1_t *p
                 if(base->indel != 0 && tmp->ref) {
                     //indel containing read exists here
                     //need to: 1) add an indel counting mode so insertions aren't double counted or add separate "non-indel" tracking.
-                    //2) create a queue of indel counts and the positions where they /should/ be reported. These positions need to determine reporting as well. ie. if reporting on a deletion and the roi doesn't include the deletion, but we find it. then we still need to do the pileup for that position BUT, there are no guarantees that we know that until we see the data. 
+                    //2) create a queue of indel counts and the positions where they /should/ be reported. These positions need to determine reporting as well. ie. if reporting on a deletion and the roi doesn't include the deletion, but we find it. then we still need to do the pileup for that position BUT, there are no guarantees that we know that until we see the data.
                     //3) So deletions should get put into a queue and their emission position stored.
                     //4) At each new position, check if we need to emit the indel.
                     //5) if that position is a) in our target roi and already passed or b) the current position then we need to emit and this needs to be done in a loop until no more indels are candidates. Maybe two loops.
@@ -403,8 +403,8 @@ int main(int argc, char *argv[])
         ("min-mapping-quality,q", po::value<int>(&(d.min_mapq))->default_value(0), "minimum mapping quality of reads used for counting.")
         ("min-base-quality,b", po::value<int>(&(d.min_bq))->default_value(0), "minimum base quality at a position to use the read for counting.")
         ("max-count,d", po::value<int>(&(d.max_cnt))->default_value(10000000), "max depth to avoid excessive memory usage.")
-        ("site-list,l", po::value<string>(&fn_pos), "file containing a list of regions to report readcounts within.") 
-        ("reference-fasta,f", po::value<string>(&fn_fa), "reference sequence in the fasta format.") 
+        ("site-list,l", po::value<string>(&fn_pos), "file containing a list of regions to report readcounts within.")
+        ("reference-fasta,f", po::value<string>(&fn_fa), "reference sequence in the fasta format.")
         ("print-individual-mapq,D", po::value<bool>(&distribution), "report the mapping qualities as a comma separated list.")
         ("per-library,p", po::bool_switch(&per_lib), "report results by library.")
         ("max-warnings,w", po::value<int64_t>(&max_warnings), "maximum number of warnings of each type to emit. -1 gives an unlimited number.")
@@ -428,7 +428,7 @@ int main(int argc, char *argv[])
     po::store(po::command_line_parser(argc, argv).
             options(cmdline_options).positional(p).run(), vm);
     po::notify(vm);
-    
+
     if (vm.count("version")) {
         cout << "bam-readcount version: " << __g_prog_version << " (commit " << __g_commit_hash << ")\n";
         return 1;
@@ -473,7 +473,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Fail to open BAM file %s\n", argv[optind]);
         return 1;
     }
-    d.in->header->dict = sam_header_parse2(d.in->header->text);
+    d.in->header->sdict = sam_header_parse2(d.in->header->text);
     std::set<std::string> lib_names = find_library_names(d.in->header);
     for(std::set<std::string>::iterator it = lib_names.begin(); it != lib_names.end(); ++it) {
         cerr << "Expect library: " << *it << " in BAM" << endl;
@@ -507,13 +507,13 @@ int main(int argc, char *argv[])
             int ret, i;
             khiter_t iter;
             khash_t(s) *h;
-            d.in->header->hash = h = kh_init(s);
+ //           d.in->header->hash = h = kh_init(s);
             for (i = 0; i < d.in->header->n_targets; ++i) {
                 iter = kh_put(s, h, d.in->header->target_name[i], &ret);
                 kh_value(h, iter) = i;
             }
         }
-        h = (khash_t(s)*)d.in->header->hash;
+//        h = (khash_t(s)*)d.in->header->hash;
         std::string lineBuf;
         while(getline(fp, lineBuf)) {
             std::stringstream ss(lineBuf);
@@ -605,5 +605,3 @@ int main(int argc, char *argv[])
     samclose(d.in);
     return 0;
 }
-
-
