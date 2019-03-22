@@ -503,18 +503,20 @@ int main(int argc, char *argv[])
         //initialize the header hash
         khiter_t iter;
         khash_t(s) *h;
-        if (d.in->header->hash == 0) {
+        const char test = "1";
+       if (bam_name2id(d.in->header, test) == 0) {
             int ret, i;
             khiter_t iter;
             khash_t(s) *h;
- //           d.in->header->hash = h = kh_init(s);
+           bam_name2id(d.in->header, test) = h = kh_init(s);
             for (i = 0; i < d.in->header->n_targets; ++i) {
                 iter = kh_put(s, h, d.in->header->target_name[i], &ret);
-                kh_value(h, iter) = i;
             }
-        }
-//        h = (khash_t(s)*)d.in->header->hash;
-        std::string lineBuf;
+                kh_value(h, iter) = i;
+           }
+       }
+       h = (khash_t(s)*)bam_name2id(d.in->header, test);
+       std::string lineBuf;
         while(getline(fp, lineBuf)) {
             std::stringstream ss(lineBuf);
             if (!(ss >> ref_name >> beg >> end))
